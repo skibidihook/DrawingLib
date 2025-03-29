@@ -606,7 +606,10 @@ function Tab:Section(sectionOptions)
     
     local secFrame = Instance.new("Frame")
     secFrame.BackgroundColor3 = Color3.fromRGB(25,25,45)
-    secFrame.Size = UDim2.new(1, 0, 0, 200)
+
+    secFrame.Size = UDim2.new(1, 0, 0, 0)
+    secFrame.AutomaticSize = Enum.AutomaticSize.Y
+
     secFrame.Parent = self.TabFrame
     applyBlueGradient(secFrame)
 
@@ -650,14 +653,26 @@ function Window:Tab(options)
     tabBtn.Parent = self.WindowFrame
     applyBlueGradient(tabBtn)
 
-    local tabFrame = Instance.new("Frame")
+    local tabFrame = Instance.new("ScrollingFrame")
     tabFrame.Size = UDim2.new(1, -10, 1, -40)
     tabFrame.Position = UDim2.new(0, 5, 0, 35)
     tabFrame.BackgroundColor3 = Color3.fromRGB(20,20,35)
     tabFrame.Visible = false
+
+    tabFrame.ScrollBarThickness = 6
+    tabFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+    tabFrame.CanvasSize = UDim2.new(0,0,0,0)
+    tabFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
     tabFrame.Parent = self.WindowFrame
     applyBlueGradient(tabFrame)
-    
+
+    local tabLayout = Instance.new("UIListLayout")
+    tabLayout.FillDirection = Enum.FillDirection.Vertical
+    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    tabLayout.Padding = UDim.new(0,10)
+    tabLayout.Parent = tabFrame
+
     tab.TabButton = tabBtn
     tab.TabFrame = tabFrame
 
