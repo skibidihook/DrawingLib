@@ -1,4 +1,3 @@
-
 local HttpService = game:GetService("HttpService")
 
 local Library = {}
@@ -80,6 +79,7 @@ function Library:Get(flag)
     if f then
         return f.Value
     end
+    return nil
 end
 
 function Library:Set(flag, value)
@@ -126,6 +126,7 @@ function Library:Window(cfg)
                 local default = cfgT.Default or false
                 local callback = cfgT.Callback or function() end
                 Library.Flags[flag] = { Type = "Toggle", Value = default, Callback = callback }
+
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -152,6 +153,7 @@ function Library:Window(cfg)
                 local default = cfgS.Default or 0
                 local callback = cfgS.Callback or function() end
                 Library.Flags[flag] = { Type="Slider", Value=default, Callback=callback }
+
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -179,6 +181,7 @@ function Library:Window(cfg)
                 local default = cfgD.Default or options[1]
                 local callback = cfgD.Callback or function() end
                 Library.Flags[flag] = { Type="Dropdown", Value=default, Callback=callback }
+
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -204,6 +207,7 @@ function Library:Window(cfg)
                 local default = cfgC.Default or Color3.fromRGB(255,255,255)
                 local callback = cfgC.Callback or function() end
                 Library.Flags[flag] = { Type="Colorpicker", Value=default, Callback=callback }
+
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -229,6 +233,7 @@ function Library:Window(cfg)
                 local mode = cfgK.Mode or "Toggle"
                 local callback = cfgK.Callback or function() end
                 Library.Flags[flag] = { Type="Keybind", Value=default, Mode=mode, Callback=callback }
+
                 local item = {
                     Name = name,
                     Flag = flag,
