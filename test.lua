@@ -1,334 +1,280 @@
+
 local HttpService = game:GetService("HttpService")
 
 local Library = {}
 Library.Flags = {}
-Library.Windows = {}
+Library.FolderName = "MyUILibraryConfigs"
 
-Library.FolderName = "FallenSurvivalLibrary"
-Library.Accent = Color3.fromRGB(255, 65, 65)
-Library.Key = Enum.KeyCode.RightShift
-
-local function makeDraggable(frame, holdObject)
-    local userinput = game:GetService("UserInputService")
-    local dragging = false
-    local dragStart, startPos
-    holdObject.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    holdObject.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
-
-local function createMainContainer(name)
-    local sgui = Instance.new("ScreenGui")
-    sgui.Name = "UI_" .. (name or "Untitled")
-    sgui.ResetOnSpawn = false
-    sgui.Parent = (gethui and gethui()) or game.CoreGui
-
-    local frame = Instance.new("Frame")
-    frame.Name = "MainFrame"
-    frame.Size = UDim2.new(0, 500, 0, 400)
-    frame.Position = UDim2.new(0.5, -250, 0.5, -200)
-    frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    frame.Active = true
-    frame.Draggable = false
-    frame.Parent = sgui
-
-    local dragBar = Instance.new("Frame")
-    dragBar.Name = "DragBar"
-    dragBar.Size = UDim2.new(1, 0, 0, 30)
-    dragBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    dragBar.Parent = frame
-
-    local label = Instance.new("TextLabel")
-    label.Name = "Title"
-    label.Size = UDim2.new(1, -10, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = name
-    label.Font = Enum.Font.SourceSans
-    label.TextSize = 20
-    label.TextColor3 = Color3.new(1,1,1)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = dragBar
-
-    makeDraggable(frame, dragBar)
-    return sgui, frame
-end
-
-function Library:Get(flag)
-    local f = self.Flags[flag]
-    if f then
-        return f.Value
-    end
-    return nil
-end
-
-function Library:Set(flag, value)
-    local f = self.Flags[flag]
-    if f then
-        f.Value = value
-        if f.Callback then
-            f.Callback(value)
-        end
-    end
-end
-
-function Library:Window(cfg)
-    local name = cfg.Name or "New Window"
-    local sgui, mainFrame = createMainContainer(name)
-    local newWindow = {
-        Name = name,
-        GuiObject = mainFrame,
-        Tabs = {},
-        _ScreenGui = sgui,
+local function CreateFlag(options)
+    local flag = {
+        Name = options.Name or "Unnamed",
+        Value = options.Default,
+        Callback = options.Callback or function(newValue) end,
+        Get = function(self)
+            return self.Value
+        end,
+        Set = function(self, newValue)
+            self.Value = newValue
+            if self.Callback then
+                self.Callback(newValue)
+            end
+        end,
     }
-    function newWindow:Tab(tc)
-        local tabName = tc.Name or "Tab"
-        local tab = {
-            Name = tabName,
-            Sections = {},
-            Window = newWindow,
-        }
-        table.insert(newWindow.Tabs, tab)
-        function tab:Section(sc)
-            local sectionName = sc.Name or "Section"
-            local side = sc.Side or "Left"
-            local newSection = {
-                Name = sectionName,
-                Tab = tab,
-                Items = {},
-                Side = side,
-            }
-            table.insert(self.Sections, newSection)
-
-            function newSection:Toggle(cfgT)
-                local name = cfgT.Name or "Toggle"
-                local flag = cfgT.Flag or (name:gsub(" ","_"):lower())
-                local default = cfgT.Default or false
-                local callback = cfgT.Callback or function() end
-                Library.Flags[flag] = { Type = "Toggle", Value = default, Callback = callback }
-
-                local item = {
-                    Name = name,
-                    Flag = flag,
-                    Type = "Toggle",
-                    Value = default,
-                    Callback = callback,
-                }
-                item.Get = function()
-                    return Library:Get(flag)
-                end
-                item.Set = function(val)
-                    Library:Set(flag, val)
-                end
-                table.insert(self.Items, item)
-                callback(default)
-                return item
-            end
-
-            function newSection:Slider(cfgS)
-                local name = cfgS.Name or "Slider"
-                local flag = cfgS.Flag or (name:gsub(" ","_"):lower())
-                local min = cfgS.Min or 0
-                local max = cfgS.Max or 100
-                local default = cfgS.Default or 0
-                local callback = cfgS.Callback or function() end
-                Library.Flags[flag] = { Type="Slider", Value=default, Callback=callback }
-
-                local item = {
-                    Name = name,
-                    Flag = flag,
-                    Type = "Slider",
-                    Min = min,
-                    Max = max,
-                    Value = default,
-                    Callback = callback,
-                }
-                item.Get = function()
-                    return Library:Get(flag)
-                end
-                item.Set = function(val)
-                    Library:Set(flag, val)
-                end
-                table.insert(self.Items, item)
-                callback(default)
-                return item
-            end
-
-            function newSection:Dropdown(cfgD)
-                local name = cfgD.Name or "Dropdown"
-                local flag = cfgD.Flag or (name:gsub(" ","_"):lower())
-                local options = cfgD.Options or {}
-                local default = cfgD.Default or options[1]
-                local callback = cfgD.Callback or function() end
-                Library.Flags[flag] = { Type="Dropdown", Value=default, Callback=callback }
-
-                local item = {
-                    Name = name,
-                    Flag = flag,
-                    Type = "Dropdown",
-                    Options = options,
-                    Value = default,
-                    Callback = callback,
-                }
-                item.Get = function()
-                    return Library:Get(flag)
-                end
-                item.Set = function(val)
-                    Library:Set(flag, val)
-                end
-                table.insert(self.Items, item)
-                callback(default)
-                return item
-            end
-
-            function newSection:Colorpicker(cfgC)
-                local name = cfgC.Name or "Colorpicker"
-                local flag = cfgC.Flag or (name:gsub(" ","_"):lower())
-                local default = cfgC.Default or Color3.fromRGB(255,255,255)
-                local callback = cfgC.Callback or function() end
-                Library.Flags[flag] = { Type="Colorpicker", Value=default, Callback=callback }
-
-                local item = {
-                    Name = name,
-                    Flag = flag,
-                    Type = "Colorpicker",
-                    Value = default,
-                    Callback = callback,
-                }
-                item.Get = function()
-                    return Library:Get(flag)
-                end
-                item.Set = function(val)
-                    Library:Set(flag, val)
-                end
-                table.insert(self.Items, item)
-                callback(default)
-                return item
-            end
-
-            function newSection:Keybind(cfgK)
-                local name = cfgK.Name or "Keybind"
-                local flag = cfgK.Flag or (name:gsub(" ","_"):lower())
-                local default = cfgK.Default or Enum.KeyCode.RightShift
-                local mode = cfgK.Mode or "Toggle"
-                local callback = cfgK.Callback or function() end
-                Library.Flags[flag] = { Type="Keybind", Value=default, Mode=mode, Callback=callback }
-
-                local item = {
-                    Name = name,
-                    Flag = flag,
-                    Type = "Keybind",
-                    Value = default,
-                    Mode = mode,
-                    Callback = callback,
-                }
-                item.Get = function()
-                    return Library:Get(flag)
-                end
-                item.Set = function(val)
-                    Library:Set(flag, val)
-                end
-                table.insert(self.Items, item)
-                callback(default)
-                return item
-            end
-
-            return newSection
-        end
-        return tab
-    end
-
-    function newWindow:SetVisible(bool)
-        newWindow.GuiObject.Visible = bool
-    end
-
-    table.insert(self.Windows, newWindow)
-    return newWindow
+    Library.Flags[options.Flag] = flag
+    return flag
 end
 
-function Library:KeybindList()
-    local keybindList = { Visible = true }
-    function keybindList:SetVisibility(bool)
-        self.Visible = bool 
-    end
-    self.KeybindList = keybindList
-    return keybindList
-end
-
-function Library:Watermark(cfg)
-    local name = cfg.Name or "Watermark"
-    local watermarkObj = { Name = name, Visible = true }
-    function watermarkObj:SetVisiblity(bool)
-        self.Visible = bool
-    end
-    self.WatermarkObj = watermarkObj
-    return watermarkObj
-end
-
-function Library:Notify(msg, time, color)
-    print("NOTIFY:", msg)
-end
-
-local function EnsureConfigFolder()
-    if not isfolder(Library.FolderName) then
-        makefolder(Library.FolderName)
-    end
-    if not isfolder(Library.FolderName .. "/Configs") then
-        makefolder(Library.FolderName .. "/Configs")
-    end
+function Library:Notify(message, duration, color)
+    print("[Notify]", message, "(for "..(duration or "default").." seconds)", color)
 end
 
 function Library:SaveConfig(configName)
-    EnsureConfigFolder()
-    local data = {}
-
-    for k, v in pairs(self.Flags) do
-        data[k] = v.Value
+    local config = {}
+    for key, flag in pairs(Library.Flags) do
+        config[key] = flag.Value
     end
-    local json = HttpService:JSONEncode(data)
-    writefile(self.FolderName .. "/Configs/".. configName..".json", json)
-end
-
-function Library:LoadConfig(jsonDataOrString)
-    local data
-    if typeof(jsonDataOrString) == "string" then
-        data = HttpService:JSONDecode(jsonDataOrString)
-    else
-        data = jsonDataOrString
-    end
-    for k,v in pairs(data) do
-        if self.Flags[k] then
-            self:Set(k,v)
-        end
-    end
+    local jsonData = self:JSONEncode(config)
+    local filename = Library.FolderName .. "/Configs/" .. configName .. ".json"
+    writefile(filename, jsonData)
+    print("[Config] Saved config:", configName)
 end
 
 function Library:DeleteConfig(configName)
-    EnsureConfigFolder()
-    local path = self.FolderName .. "/Configs/".. configName..".json"
-    if isfile(path) then
-        delfile(path)
-    end
+    local filename = Library.FolderName .. "/Configs/" .. configName .. ".json"
+    deletefile(filename)
+    print("[Config] Deleted config:", configName)
 end
 
+function Library:LoadConfig(jsonData)
+    local config = self:JSONDecode(jsonData)
+    for key, value in pairs(config) do
+        if Library.Flags[key] then
+            Library.Flags[key]:Set(value)
+        end
+    end
+    print("[Config] Loaded config.")
+end
+
+function Library:JSONEncode(tbl)
+    return HttpService:JSONEncode(tbl)
+end
+function Library:JSONDecode(str)
+    return HttpService:JSONDecode(str)
+end
+
+function Library:KeybindList()
+    local KeybindList = {
+        Visible = true,
+        SetVisibility = function(self, vis)
+            self.Visible = vis
+            print("[KeybindList] Visibility set to:", vis)
+        end
+    }
+    self.KeybindList = KeybindList
+    return KeybindList
+end
+
+function Library:Watermark(options)
+    local watermark = {
+        Name = options.Name or "Watermark",
+        Visible = true,
+        SetVisibility = function(self, vis)
+            self.Visible = vis
+            print("[Watermark] Visibility set to:", vis)
+        end
+    }
+    print("[Watermark] Created with name:", watermark.Name)
+    return watermark
+end
+
+local Window = {}
+Window.__index = Window
+
+function Window:Tab(options)
+    local tab = { Name = options.Name or "Tab", Sections = {} }
+
+    function tab:Section(sectionOptions)
+        local section = { Name = sectionOptions.Name or "Section", Side = sectionOptions.Side or "Left", Elements = {} }
+
+        function section:Toggle(opts)
+            local toggle = {
+                Name = opts.Name or "Toggle",
+                Flag = opts.Flag,
+                Default = opts.Default or false,
+                Callback = opts.Callback or function(newState) end
+            }
+            toggle.FlagObject = CreateFlag({
+                Name = opts.Name,
+                Flag = opts.Flag,
+                Default = toggle.Default,
+                Callback = toggle.Callback
+            })
+            table.insert(self.Elements, {Type = "Toggle", Object = toggle})
+            print("[UI] Created Toggle:", toggle.Name, "Default:", toggle.Default)
+            return toggle
+        end
+
+        function section:Dropdown(opts)
+            local dropdown = {
+                Name = opts.Name or "Dropdown",
+                Flag = opts.Flag,
+                Options = opts.Options or {},
+                Default = opts.Default,
+                Callback = opts.Callback or function(selected) end
+            }
+            dropdown.FlagObject = CreateFlag({
+                Name = opts.Name,
+                Flag = opts.Flag,
+                Default = dropdown.Default,
+                Callback = dropdown.Callback
+            })
+            table.insert(self.Elements, {Type = "Dropdown", Object = dropdown})
+            print("[UI] Created Dropdown:", dropdown.Name, "Default:", dropdown.Default)
+            return dropdown
+        end
+
+        function section:Slider(opts)
+            local slider = {
+                Name = opts.Name or "Slider",
+                Flag = opts.Flag,
+                Default = opts.Default or 0,
+                Min = opts.Min or 0,
+                Max = opts.Max or 100,
+                Increment = opts.Increment or 1,
+                Decimals = opts.Decimals or 0,
+                Sub = opts.Sub or "",
+                Callback = opts.Callback or function(value) end
+            }
+            slider.FlagObject = CreateFlag({
+                Name = opts.Name,
+                Flag = opts.Flag,
+                Default = slider.Default,
+                Callback = slider.Callback
+            })
+            table.insert(self.Elements, {Type = "Slider", Object = slider})
+            print("[UI] Created Slider:", slider.Name, "Default:", slider.Default)
+            return slider
+        end
+
+        function section:Colorpicker(opts)
+            local colorpicker = {
+                Name = opts.Name or "Colorpicker",
+                Flag = opts.Flag,
+                Default = opts.Default or Color3.new(1,1,1),
+                Callback = opts.Callback or function(color) end
+            }
+            colorpicker.FlagObject = CreateFlag({
+                Name = opts.Name,
+                Flag = opts.Flag,
+                Default = colorpicker.Default,
+                Callback = colorpicker.Callback
+            })
+            table.insert(self.Elements, {Type = "Colorpicker", Object = colorpicker})
+            print("[UI] Created Colorpicker:", colorpicker.Name, "Default:", colorpicker.Default)
+            return colorpicker
+        end
+
+        function section:Keybind(opts)
+            local keybind = {
+                Name = opts.Name or "Keybind",
+                Flag = opts.Flag,
+                Default = opts.Default or Enum.KeyCode.RightShift,
+                Mode = opts.Mode or "Toggle",
+                Hidden = opts.Hidden or false,
+                Callback = opts.Callback or function() end
+            }
+            keybind.FlagObject = CreateFlag({
+                Name = opts.Name,
+                Flag = opts.Flag,
+                Default = keybind.Default,
+                Callback = keybind.Callback
+            })
+            table.insert(self.Elements, {Type = "Keybind", Object = keybind})
+            print("[UI] Created Keybind:", keybind.Name, "Default:", keybind.Default)
+            return keybind
+        end
+        
+        -- Listbox
+        function section:Listbox(opts)
+            local listbox = {
+                Name = opts.Name or "Listbox",
+                Flag = opts.Flag,
+                Options = opts.Options or {},
+                Selected = nil,
+                AddOption = function(self, option)
+                    table.insert(self.Options, option)
+                end,
+                RemoveOption = function(self, option)
+                    for i, v in ipairs(self.Options) do
+                        if v == option then
+                            table.remove(self.Options, i)
+                            break
+                        end
+                    end
+                end
+            }
+            table.insert(self.Elements, {Type = "Listbox", Object = listbox})
+            print("[UI] Created Listbox:", listbox.Name)
+            return listbox
+        end
+        
+        -- Textbox
+        function section:Textbox(opts)
+            local textbox = {
+                Name = opts.Name or "Textbox",
+                Flag = opts.Flag,
+                Placeholder = opts.Placeholder or "",
+                Compact = opts.Compact or false,
+                Default = opts.Default or "",
+                Value = opts.Default or ""
+            }
+            function textbox:Set(val)
+                self.Value = val
+            end
+            table.insert(self.Elements, {Type = "Textbox", Object = textbox})
+            print("[UI] Created Textbox:", textbox.Name)
+            return textbox
+        end
+    
+        function section:Button(opts)
+            local button = {
+                Name = opts.Name or "Button",
+                Callback = opts.Callback or function() end,
+                SubButtons = {}
+            }
+            function button:Sub(subOpts)
+                local subButton = {
+                    Name = subOpts.Name or "SubButton",
+                    Callback = subOpts.Callback or function() end
+                }
+                table.insert(self.SubButtons, subButton)
+                print("[UI] Created Sub Button:", subButton.Name, "for Button:", self.Name)
+                return subButton
+            end
+            table.insert(self.Elements, {Type = "Button", Object = button})
+            print("[UI] Created Button:", button.Name)
+            return button
+        end
+        
+        self.Sections[#self.Sections+1] = section
+        return section
+    end
+    
+    self.Tabs = self.Tabs or {}
+    table.insert(self.Tabs, tab)
+    print("[UI] Created Tab:", tab.Name)
+    return tab
+end
+
+function Window:Render()
+    print("Rendering Window: " .. self.Name)
+end
+
+function Library:Window(options)
+    local win = setmetatable({}, Window)
+    win.Name = options.Name or "Window"
+    win.Tabs = {}
+    print("[UI] Created Window:", win.Name)
+    return win
+end
 return Library
