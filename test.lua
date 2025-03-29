@@ -1,6 +1,13 @@
+
+local HttpService = game:GetService("HttpService")
+
 local Library = {}
 Library.Flags = {}
 Library.Windows = {}
+
+Library.FolderName = "FallenSurvivalLibrary"
+Library.Accent = Color3.fromRGB(255, 65, 65)
+Library.Key = Enum.KeyCode.RightShift
 
 local function makeDraggable(frame, holdObject)
     local userinput = game:GetService("UserInputService")
@@ -257,7 +264,7 @@ end
 function Library:KeybindList()
     local keybindList = { Visible = true }
     function keybindList:SetVisibility(bool)
-        self.Visible = bool
+        self.Visible = bool 
     end
     self.KeybindList = keybindList
     return keybindList
@@ -271,6 +278,52 @@ function Library:Watermark(cfg)
     end
     self.WatermarkObj = watermarkObj
     return watermarkObj
+end
+
+function Library:Notify(msg, time, color)
+    print("NOTIFY:", msg)
+end
+
+local function EnsureConfigFolder()
+    if not isfolder(Library.FolderName) then
+        makefolder(Library.FolderName)
+    end
+    if not isfolder(Library.FolderName .. "/Configs") then
+        makefolder(Library.FolderName .. "/Configs")
+    end
+end
+
+function Library:SaveConfig(configName)
+    EnsureConfigFolder()
+    local data = {}
+
+    for k, v in pairs(self.Flags) do
+        data[k] = v.Value
+    end
+    local json = HttpService:JSONEncode(data)
+    writefile(self.FolderName .. "/Configs/".. configName..".json", json)
+end
+
+function Library:LoadConfig(jsonDataOrString)
+    local data
+    if typeof(jsonDataOrString) == "string" then
+        data = HttpService:JSONDecode(jsonDataOrString)
+    else
+        data = jsonDataOrString
+    end
+    for k,v in pairs(data) do
+        if self.Flags[k] then
+            self:Set(k,v)
+        end
+    end
+end
+
+function Library:DeleteConfig(configName)
+    EnsureConfigFolder()
+    local path = self.FolderName .. "/Configs/".. configName..".json"
+    if isfile(path) then
+        delfile(path)
+    end
 end
 
 return Library
