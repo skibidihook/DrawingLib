@@ -152,8 +152,17 @@ function Section:Toggle(opts)
     end)
     
     print("[UI] Created Toggle:", opts.Name or "Toggle")
+
+    toggleFlag._section = self
+    setmetatable(toggleFlag, {
+        __index = function(t, k)
+            return t._section[k]
+        end
+    })
+    
     return toggleFlag
 end
+
 
 function Section:Dropdown(opts)
     local ddFlag = CreateFlag({
