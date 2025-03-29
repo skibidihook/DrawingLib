@@ -6,7 +6,6 @@ local function makeDraggable(frame, holdObject)
     local userinput = game:GetService("UserInputService")
     local dragging = false
     local dragStart, startPos
-
     holdObject.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
@@ -19,7 +18,6 @@ local function makeDraggable(frame, holdObject)
             end)
         end
     end)
-
     holdObject.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
@@ -32,7 +30,7 @@ local function createMainContainer(name)
     local sgui = Instance.new("ScreenGui")
     sgui.Name = "UI_" .. (name or "Untitled")
     sgui.ResetOnSpawn = false
-    sgui.Parent = gethui()
+    sgui.Parent = (gethui and gethui()) or game.CoreGui
 
     local frame = Instance.new("Frame")
     frame.Name = "MainFrame"
@@ -65,6 +63,23 @@ local function createMainContainer(name)
     return sgui, frame
 end
 
+function Library:Get(flag)
+    local f = self.Flags[flag]
+    if f then
+        return f.Value
+    end
+end
+
+function Library:Set(flag, value)
+    local f = self.Flags[flag]
+    if f then
+        f.Value = value
+        if f.Callback then
+            f.Callback(value)
+        end
+    end
+end
+
 function Library:Window(cfg)
     local name = cfg.Name or "New Window"
     local sgui, mainFrame = createMainContainer(name)
@@ -74,7 +89,6 @@ function Library:Window(cfg)
         Tabs = {},
         _ScreenGui = sgui,
     }
-
     function newWindow:Tab(tc)
         local tabName = tc.Name or "Tab"
         local tab = {
@@ -83,7 +97,6 @@ function Library:Window(cfg)
             Window = newWindow,
         }
         table.insert(newWindow.Tabs, tab)
-
         function tab:Section(sc)
             local sectionName = sc.Name or "Section"
             local side = sc.Side or "Left"
@@ -94,15 +107,12 @@ function Library:Window(cfg)
                 Side = side,
             }
             table.insert(self.Sections, newSection)
-
             function newSection:Toggle(cfgT)
                 local name = cfgT.Name or "Toggle"
                 local flag = cfgT.Flag or (name:gsub(" ","_"):lower())
                 local default = cfgT.Default or false
                 local callback = cfgT.Callback or function() end
-
-                Library.Flags[flag] = { Type = "Toggle", Value = default }
-
+                Library.Flags[flag] = { Type = "Toggle", Value = default, Callback = callback }
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -111,11 +121,9 @@ function Library:Window(cfg)
                     Callback = callback,
                 }
                 table.insert(self.Items, item)
-
                 callback(default)
                 return item
             end
-
             function newSection:Slider(cfgS)
                 local name = cfgS.Name or "Slider"
                 local flag = cfgS.Flag or (name:gsub(" ","_"):lower())
@@ -123,8 +131,7 @@ function Library:Window(cfg)
                 local max = cfgS.Max or 100
                 local default = cfgS.Default or 0
                 local callback = cfgS.Callback or function() end
-
-                Library.Flags[flag] = { Type="Slider", Value=default }
+                Library.Flags[flag] = { Type="Slider", Value=default, Callback=callback }
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -138,15 +145,13 @@ function Library:Window(cfg)
                 callback(default)
                 return item
             end
-
             function newSection:Dropdown(cfgD)
                 local name = cfgD.Name or "Dropdown"
                 local flag = cfgD.Flag or (name:gsub(" ","_"):lower())
                 local options = cfgD.Options or {}
                 local default = cfgD.Default or options[1]
                 local callback = cfgD.Callback or function() end
-
-                Library.Flags[flag] = {Type="Dropdown", Value=default}
+                Library.Flags[flag] = { Type="Dropdown", Value=default, Callback=callback }
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -159,14 +164,12 @@ function Library:Window(cfg)
                 callback(default)
                 return item
             end
-
             function newSection:Colorpicker(cfgC)
                 local name = cfgC.Name or "Colorpicker"
                 local flag = cfgC.Flag or (name:gsub(" ","_"):lower())
                 local default = cfgC.Default or Color3.fromRGB(255,255,255)
                 local callback = cfgC.Callback or function() end
-
-                Library.Flags[flag] = {Type="Colorpicker", Value=default}
+                Library.Flags[flag] = { Type="Colorpicker", Value=default, Callback=callback }
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -178,15 +181,13 @@ function Library:Window(cfg)
                 callback(default)
                 return item
             end
-
             function newSection:Keybind(cfgK)
                 local name = cfgK.Name or "Keybind"
                 local flag = cfgK.Flag or (name:gsub(" ","_"):lower())
                 local default = cfgK.Default or Enum.KeyCode.RightShift
                 local mode = cfgK.Mode or "Toggle"
                 local callback = cfgK.Callback or function() end
-
-                Library.Flags[flag] = {Type="Keybind", Value=default, Mode=mode}
+                Library.Flags[flag] = { Type="Keybind", Value=default, Mode=mode, Callback=callback }
                 local item = {
                     Name = name,
                     Flag = flag,
@@ -199,29 +200,21 @@ function Library:Window(cfg)
                 callback(default)
                 return item
             end
-
             return newSection
         end
-
         return tab
     end
-
     function newWindow:SetVisible(bool)
         newWindow.GuiObject.Visible = bool
     end
-
     table.insert(self.Windows, newWindow)
     return newWindow
 end
 
 function Library:KeybindList()
-
-    local keybindList = {
-        Visible = true
-    }
+    local keybindList = { Visible = true }
     function keybindList:SetVisibility(bool)
         self.Visible = bool
-        print("KeybindList visible:", bool)
     end
     self.KeybindList = keybindList
     return keybindList
@@ -229,13 +222,9 @@ end
 
 function Library:Watermark(cfg)
     local name = cfg.Name or "Watermark"
-    local watermarkObj = {
-        Name = name,
-        Visible = true,
-    }
+    local watermarkObj = { Name = name, Visible = true }
     function watermarkObj:SetVisiblity(bool)
         self.Visible = bool
-        print("Watermark visible:", bool)
     end
     self.WatermarkObj = watermarkObj
     return watermarkObj
