@@ -1,13 +1,29 @@
 local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
 
-
+-- // PARENT (For Synapse or other executors, use gethui or fallback to CoreGui)
 local parent = (typeof(gethui) == "function" and gethui()) or game.CoreGui
 
 local Library = {}
 Library.Flags = {}
-Library.FolderName = "FallenSurvivalPanicHook11
-"
+Library.FolderName = "FallenSurvivalPanicHook11"
 
+-- // Helper: Create a folder if it doesn't exist
+local function ensureFolderExists(folderPath)
+    if not isfolder(Library.FolderName) then
+        makefolder(Library.FolderName)
+    end
+    if folderPath and folderPath ~= "" then
+        local full = Library.FolderName.."/"..folderPath
+        if not isfolder(full) then
+            makefolder(full)
+        end
+    end
+end
+ensureFolderExists("")
+ensureFolderExists("Configs")
+
+-- // Create and store a flag in Library.Flags
 local function CreateFlag(options)
     local flag = {
         Name = options.Name or "Unnamed",
@@ -25,10 +41,13 @@ local function CreateFlag(options)
     return flag
 end
 
+-- // Simple notify
 function Library:Notify(message, duration, color)
     print("[Notify]", message, "(for "..tostring(duration or "default").."s)", color)
+    -- Implement any fancy UI notification if you like
 end
 
+-- // Save config
 function Library:SaveConfig(configName)
     local config = {}
     for flagName, flagObj in pairs(Library.Flags) do
@@ -40,12 +59,16 @@ function Library:SaveConfig(configName)
     print("[Config] Saved config:", configName)
 end
 
+-- // Delete config
 function Library:DeleteConfig(configName)
     local fileName = self.FolderName.."/Configs/"..configName..".json"
-    deletefile(fileName)
-    print("[Config] Deleted config:", configName)
+    if isfile(fileName) then
+        delfile(fileName)
+        print("[Config] Deleted config:", configName)
+    end
 end
 
+-- // Load config from JSON
 function Library:LoadConfig(jsonData)
     local config = HttpService:JSONDecode(jsonData)
     for flagName, value in pairs(config) do
@@ -56,6 +79,7 @@ function Library:LoadConfig(jsonData)
     print("[Config] Loaded config.")
 end
 
+-- // Simple JSON encode/decode
 function Library:JSONEncode(tbl)
     return HttpService:JSONEncode(tbl)
 end
@@ -64,6 +88,7 @@ function Library:JSONDecode(str)
     return HttpService:JSONDecode(str)
 end
 
+-- // KeybindList placeholder
 function Library:KeybindList()
     local KeybindList = {
         Visible = true,
@@ -76,6 +101,7 @@ function Library:KeybindList()
     return KeybindList
 end
 
+-- // Watermark placeholder
 function Library:Watermark(options)
     local watermark = {
         Name = options.Name or "Watermark",
@@ -89,6 +115,7 @@ function Library:Watermark(options)
     return watermark
 end
 
+-- // Create ScreenGui
 local function createScreenGui(name)
     local gui = Instance.new("ScreenGui")
     gui.Name = name
@@ -97,6 +124,18 @@ local function createScreenGui(name)
     return gui
 end
 
+-- // Clamp a frame to the screen (so it won't go offscreen)
+local function clampToScreen(frame)
+    local parentGui = frame.Parent
+    if not parentGui or not parentGui:IsA("ScreenGui") then return end
+    
+    local screenSize = parentGui.AbsoluteSize
+    local x = math.clamp(frame.AbsolutePosition.X, 0, screenSize.X - frame.AbsoluteSize.X)
+    local y = math.clamp(frame.AbsolutePosition.Y, 0, screenSize.Y - frame.AbsoluteSize.Y)
+    frame.Position = UDim2.fromOffset(x, y)
+end
+
+-- // Draggable function + clamp
 local function makeDraggable(frame, dragBar)
     local dragging = false
     local dragStart, startPos
@@ -123,10 +162,27 @@ local function makeDraggable(frame, dragBar)
                 startPos.Y.Scale,
                 startPos.Y.Offset + delta.Y
             )
+            -- clamp position each move
+            task.defer(clampToScreen, frame)
         end
     end)
 end
 
+-- // A helper to apply a top-to-bottom gradient in a dark-blue style
+local function applyBlueGradient(obj)
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 20, 60)),  -- dark blue
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 50, 100)) -- lighter navy
+    })
+    gradient.Rotation = 90
+    gradient.Parent = obj
+    return gradient
+end
+
+----------------------------------------------------------------
+-- SECTION OBJECT
+----------------------------------------------------------------
 local Section = {}
 Section.__index = Section
 
@@ -140,10 +196,15 @@ function Section:Toggle(opts)
     
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+    btn.TextColor3 = Color3.fromRGB(220,220,255)
     btn.Text = (opts.Name or "Toggle")..": "..(toggleFlag.Value and "ON" or "OFF")
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 18
     btn.Parent = self.SectionFrame
+    
+    -- Subtle gradient on the toggle button
+    applyBlueGradient(btn)
     
     btn.MouseButton1Click:Connect(function()
         local newVal = not toggleFlag.Value
@@ -151,8 +212,6 @@ function Section:Toggle(opts)
         btn.Text = (opts.Name or "Toggle")..": "..(newVal and "ON" or "OFF")
     end)
     
-    print("[UI] Created Toggle:", opts.Name or "Toggle")
-
     toggleFlag._section = self
     setmetatable(toggleFlag, {
         __index = function(t, k)
@@ -160,9 +219,9 @@ function Section:Toggle(opts)
         end
     })
     
+    print("[UI] Created Toggle:", opts.Name or "Toggle")
     return toggleFlag
 end
-
 
 function Section:Dropdown(opts)
     local ddFlag = CreateFlag({
@@ -174,10 +233,14 @@ function Section:Dropdown(opts)
     
     local dropBtn = Instance.new("TextButton")
     dropBtn.Size = UDim2.new(1, -10, 0, 30)
-    dropBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    dropBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    dropBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+    dropBtn.TextColor3 = Color3.fromRGB(220,220,255)
     dropBtn.Text = (opts.Name or "Dropdown").." (Click)"
+    dropBtn.Font = Enum.Font.SourceSans
+    dropBtn.TextSize = 18
     dropBtn.Parent = self.SectionFrame
+    
+    applyBlueGradient(dropBtn)
     
     local open = false
     local function refreshText()
@@ -185,10 +248,15 @@ function Section:Dropdown(opts)
     end
     refreshText()
     
+    -- Simple example: each time you click, it cycles to the next option
     dropBtn.MouseButton1Click:Connect(function()
+        if not opts.Options or #opts.Options == 0 then return end
         open = not open
-        if open and #opts.Options > 0 then
-            ddFlag:Set(opts.Options[1])
+        if open then
+            -- cycle to next
+            local currentIndex = table.find(opts.Options, ddFlag.Value) or 0
+            local nextIndex = (currentIndex % #opts.Options) + 1
+            ddFlag:Set(opts.Options[nextIndex])
             refreshText()
         end
     end)
@@ -206,22 +274,30 @@ function Section:Slider(opts)
     })
     
     local sliderFrame = Instance.new("Frame")
-    sliderFrame.Size = UDim2.new(1, -10, 0, 30)
-    sliderFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    sliderFrame.Size = UDim2.new(1, -10, 0, 40)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(30,30,50)
     sliderFrame.Parent = self.SectionFrame
+    applyBlueGradient(sliderFrame)
     
     local sliderLabel = Instance.new("TextLabel")
-    sliderLabel.Size = UDim2.new(1, 0, 1, 0)
+    sliderLabel.Size = UDim2.new(1, 0, 0, 20)
+    sliderLabel.Position = UDim2.new(0, 0, 0, 0)
     sliderLabel.BackgroundTransparency = 1
-    sliderLabel.TextColor3 = Color3.fromRGB(255,255,255)
+    sliderLabel.TextColor3 = Color3.fromRGB(220,220,255)
     sliderLabel.Text = (opts.Name or "Slider")..": "..tostring(sliderFlag.Value)
+    sliderLabel.Font = Enum.Font.SourceSans
+    sliderLabel.TextSize = 18
     sliderLabel.Parent = sliderFrame
-
+    
+    -- A “click-to-increment” example (replace with real drag logic if you want)
     sliderFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local newVal = sliderFlag.Value + (opts.Increment or 1)
-            if newVal > (opts.Max or 100) then
-                newVal = (opts.Max or 100)
+            local increment = opts.Increment or 1
+            local newVal = sliderFlag.Value + increment
+            local maxVal = opts.Max or 100
+            local minVal = opts.Min or 0
+            if newVal > maxVal then
+                newVal = minVal
             end
             sliderFlag:Set(newVal)
             sliderLabel.Text = (opts.Name or "Slider")..": "..tostring(newVal)
@@ -232,6 +308,7 @@ function Section:Slider(opts)
     return sliderFlag
 end
 
+-- // Real color picker with hue + sat/val
 function Section:Colorpicker(opts)
     local cpFlag = CreateFlag({
         Name = opts.Name,
@@ -239,38 +316,184 @@ function Section:Colorpicker(opts)
         Default = opts.Default or Color3.fromRGB(255,255,255),
         Callback = opts.Callback or function(_) end
     })
-    
+
+    -- Container
     local cpFrame = Instance.new("Frame")
-    cpFrame.Size = UDim2.new(1, -10, 0, 60)
-    cpFrame.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    cpFrame.Size = UDim2.new(1, -10, 0, 100)
+    cpFrame.BackgroundColor3 = Color3.fromRGB(30,30,50)
     cpFrame.Parent = self.SectionFrame
-    
+    applyBlueGradient(cpFrame)
+
     local cpLabel = Instance.new("TextLabel")
     cpLabel.Size = UDim2.new(1, 0, 0, 20)
     cpLabel.BackgroundTransparency = 1
     cpLabel.TextColor3 = Color3.new(1,1,1)
     cpLabel.Text = opts.Name or "Colorpicker"
+    cpLabel.Font = Enum.Font.SourceSans
+    cpLabel.TextSize = 18
     cpLabel.Parent = cpFrame
-    
+
+    -- A small “preview” button to show current color
     local cpButton = Instance.new("TextButton")
-    cpButton.Size = UDim2.new(0, 50, 0, 20)
+    cpButton.Size = UDim2.new(0, 40, 0, 20)
     cpButton.Position = UDim2.new(0, 5, 0, 30)
     cpButton.BackgroundColor3 = cpFlag.Value
     cpButton.Text = ""
     cpButton.Parent = cpFrame
-    
-    local currentColor = cpFlag.Value
-    
-    cpButton.MouseButton1Click:Connect(function()
-        if currentColor == Color3.fromRGB(255,0,0) then
-            currentColor = Color3.fromRGB(0,0,255)
-        else
-            currentColor = Color3.fromRGB(255,0,0)
+    applyBlueGradient(cpButton)
+
+    -- Hue bar (on the right)
+    local hueBar = Instance.new("Frame")
+    hueBar.Size = UDim2.new(0, 15, 0, 60)
+    hueBar.Position = UDim2.new(0, 50, 0, 30)
+    hueBar.BorderSizePixel = 1
+    hueBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    hueBar.Parent = cpFrame
+
+    local hueGradient = Instance.new("UIGradient")
+    hueGradient.Rotation = 90
+    hueGradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255,0,0)),
+        ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255,0,255)),
+        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0,0,255)),
+        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0,255,255)),
+        ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0,255,0)),
+        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255,255,0)),
+        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255,0,0))
+    })
+    hueGradient.Parent = hueBar
+
+    -- Saturation/Value box
+    local satValBox = Instance.new("Frame")
+    satValBox.Size = UDim2.new(0, 100, 0, 60)
+    satValBox.Position = UDim2.new(0, 70, 0, 30)
+    satValBox.BorderSizePixel = 1
+    satValBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    satValBox.Parent = cpFrame
+
+    local satGradient = Instance.new("UIGradient")
+    satGradient.Color = ColorSequence.new(
+        ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
+        ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
+    )
+    satGradient.Transparency = NumberSequence.new(
+        NumberSequenceKeypoint.new(0, 0),
+        NumberSequenceKeypoint.new(1, 1)
+    )
+    satGradient.Rotation = 0
+    satGradient.Parent = satValBox
+
+    local valGradient = Instance.new("Frame")
+    valGradient.Size = UDim2.new(1, 0, 1, 0)
+    valGradient.BackgroundColor3 = Color3.new(0,0,0)
+    valGradient.Parent = satValBox
+
+    local valUIGrad = Instance.new("UIGradient")
+    valUIGrad.Color = ColorSequence.new(
+        ColorSequenceKeypoint.new(0, Color3.new(0,0,0)),
+        ColorSequenceKeypoint.new(1, Color3.new(0,0,0))
+    )
+    valUIGrad.Transparency = NumberSequence.new(
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(1, 0)
+    )
+    valUIGrad.Rotation = 90
+    valUIGrad.Parent = valGradient
+
+    local hue, sat, val = 0, 0, 1  -- default to white
+
+    -- Convert Color3 -> HSV
+    local function colorToHSV(col)
+        return Color3.toHSV(col)
+    end
+    -- Convert HSV -> Color3
+    local function hsvToColor(h, s, v)
+        return Color3.fromHSV(h, s, v)
+    end
+
+    -- Update the internal color
+    local function updateColor(newHue, newSat, newVal)
+        hue, sat, val = newHue, newSat, newVal
+        local c = hsvToColor(hue, sat, val)
+        cpFlag:Set(c)
+        cpButton.BackgroundColor3 = c
+        -- Also update satValBox’s background to reflect the new hue
+        satValBox.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+    end
+
+    -- Initialize from the default color
+    do
+        local h, s, v = colorToHSV(cpFlag.Value)
+        hue, sat, val = h, s, v
+        cpButton.BackgroundColor3 = cpFlag.Value
+        satValBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+    end
+
+    -- Detect clicks on the hue bar
+    hueBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local moveConn
+            local releaseConn
+
+            local function updateHue(inputPos)
+                local relY = math.clamp(inputPos.Y - hueBar.AbsolutePosition.Y, 0, hueBar.AbsoluteSize.Y)
+                local newH = relY / hueBar.AbsoluteSize.Y
+                updateColor(newH, sat, val)
+            end
+
+            updateHue(input.Position)
+
+            moveConn = UserInputService.InputChanged:Connect(function(mInput)
+                if mInput.UserInputType == Enum.UserInputType.MouseMovement then
+                    updateHue(mInput.Position)
+                end
+            end)
+            releaseConn = UserInputService.InputEnded:Connect(function(eInput)
+                if eInput.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if moveConn then moveConn:Disconnect() end
+                    if releaseConn then releaseConn:Disconnect() end
+                end
+            end)
         end
-        cpFlag:Set(currentColor)
-        cpButton.BackgroundColor3 = currentColor
     end)
-    
+
+    -- Detect clicks on the sat/val box
+    satValBox.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            local moveConn
+            local releaseConn
+
+            local function updateSV(inputPos)
+                local relX = math.clamp(inputPos.X - satValBox.AbsolutePosition.X, 0, satValBox.AbsoluteSize.X)
+                local relY = math.clamp(inputPos.Y - satValBox.AbsolutePosition.Y, 0, satValBox.AbsoluteSize.Y)
+                local newS = relX / satValBox.AbsoluteSize.X
+                local newV = 1 - (relY / satValBox.AbsoluteSize.Y)
+                updateColor(hue, newS, newV)
+            end
+
+            updateSV(input.Position)
+
+            moveConn = UserInputService.InputChanged:Connect(function(mInput)
+                if mInput.UserInputType == Enum.UserInputType.MouseMovement then
+                    updateSV(mInput.Position)
+                end
+            end)
+            releaseConn = UserInputService.InputEnded:Connect(function(eInput)
+                if eInput.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if moveConn then moveConn:Disconnect() end
+                    if releaseConn then releaseConn:Disconnect() end
+                end
+            end)
+        end
+    end)
+
+    -- Clicking the preview just toggles between two colors (example),
+    -- but we have the real color selection above. You can remove this if you want.
+    cpButton.MouseButton1Click:Connect(function()
+        -- Example: reset to white
+        updateColor(0, 0, 1)
+    end)
+
     print("[UI] Created Colorpicker:", opts.Name or "Colorpicker")
     return cpFlag
 end
@@ -285,14 +508,27 @@ function Section:Keybind(opts)
     
     local kbBtn = Instance.new("TextButton")
     kbBtn.Size = UDim2.new(1, -10, 0, 30)
-    kbBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    kbBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    kbBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+    kbBtn.TextColor3 = Color3.fromRGB(220,220,255)
     kbBtn.Text = (opts.Name or "Keybind")..": "..tostring(kbFlag.Value.Name or kbFlag.Value)
+    kbBtn.Font = Enum.Font.SourceSans
+    kbBtn.TextSize = 18
     kbBtn.Parent = self.SectionFrame
+    applyBlueGradient(kbBtn)
 
+    -- Let user press any key to set the bind
     kbBtn.MouseButton1Click:Connect(function()
-        kbFlag:Set(Enum.KeyCode.F)
-        kbBtn.Text = (opts.Name or "Keybind")..": F"
+        kbBtn.Text = "Press any key..."
+        local conn
+        conn = UserInputService.InputBegan:Connect(function(input, gp)
+            if not gp then
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    kbFlag:Set(input.KeyCode)
+                    kbBtn.Text = (opts.Name or "Keybind")..": "..tostring(input.KeyCode.Name)
+                    conn:Disconnect()
+                end
+            end
+        end)
     end)
     
     print("[UI] Created Keybind:", opts.Name or "Keybind")
@@ -320,10 +556,13 @@ function Section:Listbox(opts)
     
     local lbLabel = Instance.new("TextLabel")
     lbLabel.Size = UDim2.new(1, -10, 0, 30)
-    lbLabel.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    lbLabel.TextColor3 = Color3.fromRGB(255,255,255)
+    lbLabel.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+    lbLabel.TextColor3 = Color3.fromRGB(220,220,255)
     lbLabel.Text = "[Listbox] "..listbox.Name
+    lbLabel.Font = Enum.Font.SourceSans
+    lbLabel.TextSize = 18
     lbLabel.Parent = self.SectionFrame
+    applyBlueGradient(lbLabel)
     
     print("[UI] Created Listbox:", listbox.Name)
     return listbox
@@ -341,11 +580,14 @@ function Section:Textbox(opts)
     
     local tb = Instance.new("TextBox")
     tb.Size = UDim2.new(1, -10, 0, 30)
-    tb.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    tb.TextColor3 = Color3.fromRGB(255,255,255)
+    tb.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+    tb.TextColor3 = Color3.fromRGB(220,220,255)
     tb.Text = textbox.Default
     tb.PlaceholderText = textbox.Placeholder
+    tb.Font = Enum.Font.SourceSans
+    tb.TextSize = 18
     tb.Parent = self.SectionFrame
+    applyBlueGradient(tb)
     
     tb.FocusLost:Connect(function(enterPressed)
         if enterPressed then
@@ -366,10 +608,13 @@ function Section:Button(opts)
     
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.BackgroundColor3 = Color3.fromRGB(80,80,80)
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 75)
+    btn.TextColor3 = Color3.fromRGB(220,220,255)
     btn.Text = button.Name
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 18
     btn.Parent = self.SectionFrame
+    applyBlueGradient(btn)
     
     btn.MouseButton1Click:Connect(function()
         button.Callback()
@@ -389,6 +634,9 @@ function Section:Button(opts)
     return button
 end
 
+----------------------------------------------------------------
+-- TAB OBJECT
+----------------------------------------------------------------
 local Tab = {}
 Tab.__index = Tab
 
@@ -399,10 +647,11 @@ function Tab:Section(sectionOptions)
     section.Elements = {}
     
     local secFrame = Instance.new("Frame")
-    secFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    secFrame.BackgroundColor3 = Color3.fromRGB(25,25,45)
     secFrame.Size = UDim2.new(1, 0, 0, 200)
     secFrame.Parent = self.TabFrame
-    
+    applyBlueGradient(secFrame)
+
     local layout = Instance.new("UIListLayout")
     layout.FillDirection = Enum.FillDirection.Vertical
     layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -413,6 +662,8 @@ function Tab:Section(sectionOptions)
     secTitle.Size = UDim2.new(1, 0, 0, 20)
     secTitle.BackgroundTransparency = 1
     secTitle.TextColor3 = Color3.fromRGB(255,255,255)
+    secTitle.Font = Enum.Font.SourceSansBold
+    secTitle.TextSize = 20
     secTitle.Text = section.Name
     secTitle.Parent = secFrame
     
@@ -422,6 +673,9 @@ function Tab:Section(sectionOptions)
     return section
 end
 
+----------------------------------------------------------------
+-- WINDOW OBJECT
+----------------------------------------------------------------
 local Window = {}
 Window.__index = Window
 
@@ -433,17 +687,21 @@ function Window:Tab(options)
     local tabBtn = Instance.new("TextButton")
     tabBtn.Size = UDim2.new(0, 100, 0, 30)
     tabBtn.Position = UDim2.new(0, #self.Tabs * 110, 0, 0)
-    tabBtn.BackgroundColor3 = Color3.fromRGB(70,70,70)
-    tabBtn.TextColor3 = Color3.fromRGB(255,255,255)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+    tabBtn.TextColor3 = Color3.fromRGB(220,220,255)
     tabBtn.Text = tab.Name
+    tabBtn.Font = Enum.Font.SourceSans
+    tabBtn.TextSize = 18
     tabBtn.Parent = self.WindowFrame
+    applyBlueGradient(tabBtn)
 
     local tabFrame = Instance.new("Frame")
     tabFrame.Size = UDim2.new(1, -10, 1, -40)
     tabFrame.Position = UDim2.new(0, 5, 0, 35)
-    tabFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    tabFrame.BackgroundColor3 = Color3.fromRGB(20,20,35)
     tabFrame.Visible = false
     tabFrame.Parent = self.WindowFrame
+    applyBlueGradient(tabFrame)
     
     tab.TabButton = tabBtn
     tab.TabFrame = tabFrame
@@ -464,7 +722,7 @@ function Window:Render()
     if self.Tabs[1] then
         self.Tabs[1].TabFrame.Visible = true
     end
-    print("Rendering Window:", self.Name)
+    print("[UI] Rendering Window:", self.Name)
 end
 
 function Library:Window(options)
@@ -478,21 +736,28 @@ function Library:Window(options)
     
     local gui = createScreenGui(win.Name.."_GUI")
     
+    -- Make the window bigger by default
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 500, 0, 400)
-    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+    mainFrame.Size = UDim2.new(0, 650, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -325, 0.5, -250)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(15,15,30)
+    mainFrame.BorderSizePixel = 0
     mainFrame.Parent = gui
-    
+    applyBlueGradient(mainFrame)
+
     local topBar = Instance.new("Frame")
     topBar.Size = UDim2.new(1, 0, 0, 30)
-    topBar.BackgroundColor3 = Color3.fromRGB(15,15,15)
+    topBar.BackgroundColor3 = Color3.fromRGB(10,10,25)
+    topBar.BorderSizePixel = 0
     topBar.Parent = mainFrame
+    applyBlueGradient(topBar)
     
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 1, 0)
     title.BackgroundTransparency = 1
     title.TextColor3 = Color3.fromRGB(255,255,255)
+    title.Font = Enum.Font.SourceSansBold
+    title.TextSize = 20
     title.Text = win.Name
     title.Parent = topBar
     
