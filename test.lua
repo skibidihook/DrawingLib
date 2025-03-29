@@ -21,7 +21,12 @@ local function makeDraggable(frame, holdObject)
     holdObject.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            frame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
         end
     end)
 end
@@ -107,6 +112,7 @@ function Library:Window(cfg)
                 Side = side,
             }
             table.insert(self.Sections, newSection)
+
             function newSection:Toggle(cfgT)
                 local name = cfgT.Name or "Toggle"
                 local flag = cfgT.Flag or (name:gsub(" ","_"):lower())
@@ -120,10 +126,17 @@ function Library:Window(cfg)
                     Value = default,
                     Callback = callback,
                 }
+                item.Get = function()
+                    return Library:Get(flag)
+                end
+                item.Set = function(val)
+                    Library:Set(flag, val)
+                end
                 table.insert(self.Items, item)
                 callback(default)
                 return item
             end
+
             function newSection:Slider(cfgS)
                 local name = cfgS.Name or "Slider"
                 local flag = cfgS.Flag or (name:gsub(" ","_"):lower())
@@ -141,10 +154,17 @@ function Library:Window(cfg)
                     Value = default,
                     Callback = callback,
                 }
+                item.Get = function()
+                    return Library:Get(flag)
+                end
+                item.Set = function(val)
+                    Library:Set(flag, val)
+                end
                 table.insert(self.Items, item)
                 callback(default)
                 return item
             end
+
             function newSection:Dropdown(cfgD)
                 local name = cfgD.Name or "Dropdown"
                 local flag = cfgD.Flag or (name:gsub(" ","_"):lower())
@@ -160,10 +180,17 @@ function Library:Window(cfg)
                     Value = default,
                     Callback = callback,
                 }
+                item.Get = function()
+                    return Library:Get(flag)
+                end
+                item.Set = function(val)
+                    Library:Set(flag, val)
+                end
                 table.insert(self.Items, item)
                 callback(default)
                 return item
             end
+
             function newSection:Colorpicker(cfgC)
                 local name = cfgC.Name or "Colorpicker"
                 local flag = cfgC.Flag or (name:gsub(" ","_"):lower())
@@ -177,10 +204,17 @@ function Library:Window(cfg)
                     Value = default,
                     Callback = callback,
                 }
+                item.Get = function()
+                    return Library:Get(flag)
+                end
+                item.Set = function(val)
+                    Library:Set(flag, val)
+                end
                 table.insert(self.Items, item)
                 callback(default)
                 return item
             end
+
             function newSection:Keybind(cfgK)
                 local name = cfgK.Name or "Keybind"
                 local flag = cfgK.Flag or (name:gsub(" ","_"):lower())
@@ -196,17 +230,26 @@ function Library:Window(cfg)
                     Mode = mode,
                     Callback = callback,
                 }
+                item.Get = function()
+                    return Library:Get(flag)
+                end
+                item.Set = function(val)
+                    Library:Set(flag, val)
+                end
                 table.insert(self.Items, item)
                 callback(default)
                 return item
             end
+
             return newSection
         end
         return tab
     end
+
     function newWindow:SetVisible(bool)
         newWindow.GuiObject.Visible = bool
     end
+
     table.insert(self.Windows, newWindow)
     return newWindow
 end
