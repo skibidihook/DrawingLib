@@ -50,14 +50,12 @@ function Library:SaveConfig(configName)
     local jsonData = HttpService:JSONEncode(config)
     local fileName = self.FolderName.."/Configs/"..configName..".json"
     writefile(fileName, jsonData)
-    print("[Config] Saved config:", configName)
 end
 
 function Library:DeleteConfig(configName)
     local fileName = self.FolderName.."/Configs/"..configName..".json"
     if isfile(fileName) then
         delfile(fileName)
-        print("[Config] Deleted config:", configName)
     end
 end
 
@@ -68,7 +66,6 @@ function Library:LoadConfig(jsonData)
             Library.Flags[flagName]:Set(value)
         end
     end
-    print("[Config] Loaded config.")
 end
 
 function Library:JSONEncode(tbl)
@@ -84,7 +81,6 @@ function Library:KeybindList()
         Visible = true,
         SetVisibility = function(self, vis)
             self.Visible = vis
-            print("[KeybindList] Visibility set to:", vis)
         end
     }
     self.KeybindList = KeybindList
@@ -97,10 +93,8 @@ function Library:Watermark(options)
         Visible = true,
         SetVisibility = function(self, vis)
             self.Visible = vis
-            print("[Watermark] Visibility set to:", vis)
         end
     }
-    print("[Watermark] Created with name:", watermark.Name)
     return watermark
 end
 
@@ -199,7 +193,6 @@ function Section:Toggle(opts)
         end
     })
     
-    print("[UI] Created Toggle:", opts.Name or "Toggle")
     return toggleFlag
 end
 
@@ -239,7 +232,6 @@ function Section:Dropdown(opts)
         end
     end)
     
-    print("[UI] Created Dropdown:", opts.Name or "Dropdown")
     return ddFlag
 end
 
@@ -280,8 +272,7 @@ function Section:Slider(opts)
             sliderLabel.Text = (opts.Name or "Slider")..": "..tostring(newVal)
         end
     end)
-    
-    print("[UI] Created Slider:", opts.Name or "Slider")
+
     return sliderFlag
 end
 
@@ -456,7 +447,6 @@ function Section:Colorpicker(opts)
         updateColor(0, 0, 1)
     end)
 
-    print("[UI] Created Colorpicker:", opts.Name or "Colorpicker")
     return cpFlag
 end
 
@@ -492,7 +482,6 @@ function Section:Keybind(opts)
         end)
     end)
     
-    print("[UI] Created Keybind:", opts.Name or "Keybind")
     return kbFlag
 end
 
@@ -524,8 +513,7 @@ function Section:Listbox(opts)
     lbLabel.TextSize = 18
     lbLabel.Parent = self.SectionFrame
     applyBlueGradient(lbLabel)
-    
-    print("[UI] Created Listbox:", listbox.Name)
+
     return listbox
 end
 
@@ -555,8 +543,7 @@ function Section:Textbox(opts)
             textbox.Value = tb.Text
         end
     end)
-    
-    print("[UI] Created Textbox:", textbox.Name)
+
     return textbox
 end
 
@@ -587,11 +574,9 @@ function Section:Button(opts)
             Callback = subOpts.Callback or function() end
         }
         table.insert(self.SubButtons, subButton)
-        print("[UI] Created Sub Button:", subButton.Name, "for Button:", self.Name)
         return subButton
     end
     
-    print("[UI] Created Button:", button.Name)
     return button
 end
 
@@ -629,7 +614,6 @@ function Tab:Section(sectionOptions)
     secTitle.Parent = secFrame
     
     section.SectionFrame = secFrame
-    print("[UI] Created Section:", section.Name)
     table.insert(self.Sections, section)
     return section
 end
@@ -683,7 +667,6 @@ function Window:Tab(options)
         tabFrame.Visible = true
     end)
     
-    print("[UI] Created Tab:", tab.Name)
     table.insert(self.Tabs, tab)
     return tab
 end
@@ -692,7 +675,6 @@ function Window:Render()
     if self.Tabs[1] then
         self.Tabs[1].TabFrame.Visible = true
     end
-    print("[UI] Rendering Window:", self.Name)
 end
 
 function Library:Window(options)
@@ -735,7 +717,6 @@ function Library:Window(options)
     win.WindowFrame = mainFrame
     win.Gui = gui
     
-    print("[UI] Created Window:", win.Name)
     return win
 end
 
