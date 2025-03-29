@@ -155,10 +155,10 @@ end
 
 local function applyBlueGradient(obj)
     local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new(
+    gradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.fromRGB(5, 20, 60)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 50, 100))
-    )
+    })
     gradient.Rotation = 90
     gradient.Parent = obj
     return gradient
@@ -325,7 +325,7 @@ function Section:Colorpicker(opts)
 
     local hueGradient = Instance.new("UIGradient")
     hueGradient.Rotation = 90
-    hueGradient.Color = ColorSequence.new(
+    hueGradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255,0,0)),
         ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255,0,255)),
         ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0,0,255)),
@@ -333,7 +333,7 @@ function Section:Colorpicker(opts)
         ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0,255,0)),
         ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255,255,0)),
         ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255,0,0))
-    )
+    })
     hueGradient.Parent = hueBar
 
     local satValBox = Instance.new("Frame")
@@ -344,14 +344,14 @@ function Section:Colorpicker(opts)
     satValBox.Parent = cpFrame
 
     local satGradient = Instance.new("UIGradient")
-    satGradient.Color = ColorSequence.new(
+    satGradient.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.new(1,1,1)),
         ColorSequenceKeypoint.new(1, Color3.new(1,1,1))
-    )
-    satGradient.Transparency = NumberSequence.new(
+    })
+    satGradient.Transparency = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 0),
         NumberSequenceKeypoint.new(1, 1)
-    )
+    })
     satGradient.Rotation = 0
     satGradient.Parent = satValBox
 
@@ -361,14 +361,14 @@ function Section:Colorpicker(opts)
     valGradient.Parent = satValBox
 
     local valUIGrad = Instance.new("UIGradient")
-    valUIGrad.Color = ColorSequence.new(
+    valUIGrad.Color = ColorSequence.new({
         ColorSequenceKeypoint.new(0, Color3.new(0,0,0)),
         ColorSequenceKeypoint.new(1, Color3.new(0,0,0))
-    )
-    valUIGrad.Transparency = NumberSequence.new(
+    })
+    valUIGrad.Transparency = NumberSequence.new({
         NumberSequenceKeypoint.new(0, 1),
         NumberSequenceKeypoint.new(1, 0)
-    )
+    })
     valUIGrad.Rotation = 90
     valUIGrad.Parent = valGradient
 
