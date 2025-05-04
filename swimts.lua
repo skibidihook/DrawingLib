@@ -3236,5 +3236,3 @@ cheat.SaveManager:BuildConfigSection(ui.tabs.config)
 cheat.ThemeManager:ApplyToGroupbox(ui.box.themeconfig)
 
 cheat.EspLibrary.load()
-
-run_on_actor(getactors()[1], source)
